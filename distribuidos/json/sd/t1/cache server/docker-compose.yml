@@ -1,0 +1,53 @@
+version: '3'
+services:
+  master_cache_json:
+    build:
+      context: ./app/server
+      dockerfile: Dockerfile
+    container_name: master_cache_json
+    command: ["master", "50052"]
+    tty: true
+    stdin_open: true
+    volumes:
+      - './app/server:/app'
+    ports:
+      - "50052:50052"
+    networks:
+      - cache_network
+
+  slave_cache_json:
+    build:
+      context: ./app/server
+      dockerfile: Dockerfile
+    container_name: slave_cache_json
+    command: ["slave", "50052", "--master_ip", "master_cache_json", "--master_port", "50052", "--service_name", "slave"]
+    tty: true
+    stdin_open: true
+    volumes:
+      - './app/server:/app'
+      - './data_gen/cars.json:/app/cars.json'
+    networks:
+      - cache_network
+    restart: always
+    depends_on: 
+      - master_cache_json
+  
+  search_cache_json:
+    build:
+      context: ./app/search
+      dockerfile: Dockerfile
+    container_name: search_cache_json
+    #command: ["slave", "50052", "--master_ip", "master_cache_json", "--master_port", "50052"]
+    tty: true
+    stdin_open: true
+    volumes:
+      - './app/search:/app'
+      - './data_gen/cars.json:/app/cars.json'
+    networks:
+      - cache_network
+    restart: always
+    depends_on: 
+      - master_cache_json
+
+networks:
+  cache_network:

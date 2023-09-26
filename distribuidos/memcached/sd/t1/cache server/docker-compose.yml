@@ -1,0 +1,65 @@
+version: '3'
+services:
+  memcached:
+    image: memcached:latest
+    container_name: memcached
+    networks:
+      - cache_network
+    command: memcached -m 64
+    ports:
+      - "11214:11211"
+
+  master:
+    build:
+      context: ./app/server
+      dockerfile: Dockerfile
+    container_name: master
+    command: ["master", "50053"]
+    tty: true
+    stdin_open: true
+    volumes:
+      - './app/server:/app'
+    ports:
+      - "50053:50053"
+    networks:
+      - cache_network
+    depends_on:
+      - memcached
+
+  slave:
+    build:
+      context: ./app/server
+      dockerfile: Dockerfile
+    container_name: slave
+    command: ["slave", "50053", "--master_ip", "master", "--master_port", "50053", "--service_name", "slave"]
+    tty: true
+    stdin_open: true
+    volumes:
+      - './app/server:/app'
+      - './data_gen/cars.json:/app/cars.json'
+    networks:
+      - cache_network
+    restart: always
+    depends_on: 
+      - master
+      - memcached
+  
+  search:
+    build:
+      context: ./app/search
+      dockerfile: Dockerfile
+    container_name: search
+    tty: true
+    stdin_open: true
+    volumes:
+      - './app/search:/app'
+      - './data_gen/cars.json:/app/cars.json'
+    networks:
+      - cache_network
+    restart: always
+    depends_on: 
+      - master
+      - memcached
+
+networks:
+  cache_network:
